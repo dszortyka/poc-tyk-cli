@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: myapp
+  name: myapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myapp
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: myapp
+      name: myapp
+    spec:
+      containers:
+        - name: myapp
+          image: <YOUR_ARTIFACTORY_HOST>/myapp:dev
+          imagePullPolicy: Always
+          command: ["/bin/bash", "-c"]
+          # /usr/local/bin/uwsgi --ini /etc/uwsgi/uwsgi.ini --die-on-term
+          # args: ["source /vault/secrets/config && /usr/local/bin/uwsgi --ini /etc/uwsgi/uwsgi.ini --die-on-term"]
+          args: [ "while true; do sleep 30; done;" ]
+          ports:
+            - containerPort: 5000
+              name: myapp
+          env:
+          - name: PYTHONPATH
+            value: /mnt/app/
+          - name: TYK_GATEWAY_ENV
+            value: "https://<AWS_LOAD_BALANCER>.us-east-1.elb.amazonaws.com"
+          - name: TYK_API_KEY
+            value: ""
+          resources:
+            limits:
+              cpu: 200m
+              memory: 500Mi
+            requests:
+              cpu: 100m
+              memory: 200Mi
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: myapp
+  name: myapp
+spec:
+  selector:
+    app: myapp
+  ports:
+    - port: 8080
+      name: myapp
+      targetPort: 5000
